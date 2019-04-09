@@ -29,10 +29,32 @@ namespace SteamCli
         public static void Run()
         {
             IsReady = false;
-            Console.Write("Username: ");
-            user = Console.ReadLine();
-            Console.Write("Password: ");
-            pass = Console.ReadLine();
+            if (File.Exists("login.txt"))
+            {
+                var input = File.ReadAllLines("login.txt");
+                user = input[0];
+                pass = input[1];
+            }
+            else
+            {
+                Console.Write("Username: ");
+                user = Console.ReadLine();
+                Console.Write("Password: ");
+                pass = Console.ReadLine();
+            }
+            Console.WriteLine("Do you want to save you login information? (y/n)");
+            while (true)
+            {
+                var input = Console.ReadKey();
+                if (char.ToLower(input.KeyChar) == 'y')
+                {
+                    File.WriteAllLines("login.txt", new string[] { user, pass });
+                }
+                else if (Char.ToLower(input.KeyChar) == 'n')
+                {
+                    break;
+                }
+            }
 
             friendsList = new List<Friend>();
             chatMessages = new List<string>();
