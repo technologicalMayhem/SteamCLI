@@ -29,6 +29,7 @@ namespace SteamCli
         public static void Run()
         {
             IsReady = false;
+            bool firstLogin = false;
             if (File.Exists("login.txt"))
             {
                 var input = File.ReadAllLines("login.txt");
@@ -37,22 +38,26 @@ namespace SteamCli
             }
             else
             {
+                firstLogin = true;
                 Console.Write("Username: ");
                 user = Console.ReadLine();
                 Console.Write("Password: ");
                 pass = Console.ReadLine();
             }
-            Console.WriteLine("Do you want to save you login information? (y/n)");
-            while (true)
+            if (firstLogin)
             {
-                var input = Console.ReadKey();
-                if (char.ToLower(input.KeyChar) == 'y')
+                Console.Write("Do you want to save you login information? (y/n)");
+                while (true)
                 {
-                    File.WriteAllLines("login.txt", new string[] { user, pass });
-                }
-                else if (Char.ToLower(input.KeyChar) == 'n')
-                {
-                    break;
+                    var input = Console.ReadKey();
+                    if (char.ToLower(input.KeyChar) == 'y')
+                    {
+                        File.WriteAllLines("login.txt", new string[] { user, pass });
+                    }
+                    else if (Char.ToLower(input.KeyChar) == 'n')
+                    {
+                        break;
+                    }
                 }
             }
 
@@ -75,7 +80,8 @@ namespace SteamCli
             manager.Subscribe<SteamUser.LoggedOnCallback>(OnLoggedOn);
             manager.Subscribe<SteamUser.LoggedOffCallback>(OnLoggedOff);
 
-            manager.Subscribe<SteamFriends.ChatMsgCallback>(OnChatMsg);
+            manager.Subscribe<SteamUser.AccountInfoCallback>(OnAccountInfo);
+            manager.Subscribe<SteamFriends.FriendMsgCallback>(OnFriendMsg);
             manager.Subscribe<SteamFriends.PersonaStateCallback>(OnPersonaState);
 
             // this callback is triggered when the steam servers wish for the client to store the sentry file
@@ -94,6 +100,11 @@ namespace SteamCli
                 // in order for the callbacks to get routed, they need to be handled by the manager
                 manager.RunWaitCallbacks(TimeSpan.FromSeconds(1));
             }
+        }
+
+        private static void OnAccountInfo(SteamUser.AccountInfoCallback callback)
+        {
+            steamFriends.SetPersonaState( EPersonaState.Online );
         }
 
         private static void OnPersonaState(SteamFriends.PersonaStateCallback callback)
@@ -119,9 +130,13 @@ namespace SteamCli
             steamFriends.SendChatMessage(steamid, EChatEntryType.ChatMsg, message);
         }
 
-        static void OnChatMsg(SteamFriends.ChatMsgCallback callback)
+        static void OnFriendMsg(SteamFriends.FriendMsgCallback callback)
         {
-            chatMessages.Add($"{callback.ChatterID}: {callback.Message}");
+            if (callback.EntryType == EChatEntryType.ChatMsg)
+            {
+                chatMessages.Add($"{friendsList.Find(x => x.steamid == callback.Sender).username}: {callback.Message}");
+                ConsoleManager.Render();
+            }
         }
 
         static void OnConnected(SteamClient.ConnectedCallback callback)
